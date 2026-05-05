@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 
 function formatUsd(val) {
   if (val === 0 || val == null) return '$0.00';
@@ -44,6 +44,18 @@ function getTierDimColor(tier) {
   if (tier === 'ELITE') return 'var(--purple-dim)';
   if (tier === 'SMART') return 'var(--green-dim)';
   return 'var(--amber-dim)';
+}
+
+function getConvictionColor(c) {
+  if (c === 'EXTREME') return 'var(--green)';
+  if (c === 'HIGH') return 'var(--amber)';
+  return 'var(--blue)';
+}
+
+function getConvictionDim(c) {
+  if (c === 'EXTREME') return 'var(--green-dim)';
+  if (c === 'HIGH') return 'var(--amber-dim)';
+  return 'var(--blue-dim)';
 }
 
 function generateSparkline(start, end, points) {
@@ -189,7 +201,7 @@ const MOCK_TRADES = Array.from({ length: 20 }, (_, i) => {
     amount: 100 + Math.random() * 10000,
     price: price,
     valueUsd: 50 + Math.random() * 15000,
-    pnl: parseFloat((-20 + Math.random() * 40).toFixed(2)),
+    pnl: parseFloat((-2000 + Math.random() * 6000).toFixed(2)),
     timestamp: Date.now() - (i * 540000 + Math.random() * 300000),
   };
 }).sort((a, b) => b.timestamp - a.timestamp);
@@ -293,17 +305,6 @@ function SignalsPanel({ signals, wallets, onSelectWallet }) {
         <div className="empty-state">No signals detected</div>
       </aside>
     );
-  }
-
-  function getConvictionColor(c) {
-    if (c === 'EXTREME') return 'var(--green)';
-    if (c === 'HIGH') return 'var(--amber)';
-    return 'var(--blue)';
-  }
-  function getConvictionDim(c) {
-    if (c === 'EXTREME') return 'var(--green-dim)';
-    if (c === 'HIGH') return 'var(--amber-dim)';
-    return 'var(--blue-dim)';
   }
 
   return (
@@ -411,11 +412,11 @@ function LeaderboardTab({ wallets, onSelectWallet, copiedAddress, setCopiedAddre
               style={{ '--tier-color': tierColor }}
             >
               <span className="lb-col lb-rank">#{i + 1}</span>
-              <span className="lb-col lb-wallet">
+              <span className="lb-col lb-wallet" style={{ position: 'relative' }}>
                 <button className="wallet-addr-btn" onClick={(e) => copyAddr(e, w.address)} title="Click to copy">
                   {shortAddr(w.address)}
+                  {copiedAddress === w.address && <span className="copied-tip">Copied!</span>}
                 </button>
-                {copiedAddress === w.address && <span className="copied-tip">Copied!</span>}
               </span>
               <span className="lb-col lb-score">
                 <div className="score-bar-container">
@@ -462,7 +463,7 @@ function FeedTab({ trades, wallets }) {
             <span className="feed-token">{trade.token.symbol}</span>
             <span className="feed-value">{formatUsd(trade.valueUsd)}</span>
             <span className={`feed-pnl ${trade.pnl >= 0 ? 'positive' : 'negative'}`}>
-              {trade.pnl >= 0 ? '+' : ''}{trade.pnl.toFixed(1)}%
+              {trade.pnl >= 0 ? '+' : ''}{formatUsd(Math.abs(trade.pnl))}
             </span>
             <span className="feed-time">{timeAgo(trade.timestamp)}</span>
           </div>
@@ -475,17 +476,6 @@ function FeedTab({ trades, wallets }) {
 function SignalsDetailTab({ signals, wallets, onSelectWallet }) {
   if (!signals || signals.length === 0) {
     return <div className="empty-state">No signals detected</div>;
-  }
-
-  function getConvictionColor(c) {
-    if (c === 'EXTREME') return 'var(--green)';
-    if (c === 'HIGH') return 'var(--amber)';
-    return 'var(--blue)';
-  }
-  function getConvictionDim(c) {
-    if (c === 'EXTREME') return 'var(--green-dim)';
-    if (c === 'HIGH') return 'var(--amber-dim)';
-    return 'var(--blue-dim)';
   }
 
   return (
@@ -549,6 +539,14 @@ function SignalsDetailTab({ signals, wallets, onSelectWallet }) {
                 </div>
               );
             })}
+          </div>
+          <div className="signal-security-row">
+            <span className="security-label">Security Assessment</span>
+            <div className="security-badges">
+              <span className="security-badge low">Freeze Authority: None</span>
+              <span className="security-badge low">Mint Authority: Revoked</span>
+              <span className="security-badge low">Honeypot Risk: Low</span>
+            </div>
           </div>
         </div>
       ))}
@@ -847,6 +845,13 @@ body { background: var(--bg-base); color: var(--text-primary); font-family: var(
 .dt-token { font-weight: 600; color: var(--text-primary); }
 .dt-value { font-family: var(--font-mono); color: var(--text-secondary); margin-left: auto; }
 .dt-time { font-family: var(--font-mono); color: var(--text-tertiary); font-size: 11px; }
+.signal-security-row { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-subtle); }
+.security-label { font-size: 11px; font-family: var(--font-mono); color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 8px; }
+.security-badges { display: flex; flex-wrap: wrap; gap: 8px; }
+.security-badge { font-size: 11px; font-family: var(--font-mono); padding: 4px 10px; border-radius: 4px; }
+.security-badge.low { background: var(--green-dim); color: var(--green); }
+.security-badge.medium { background: var(--amber-dim); color: var(--amber); }
+.security-badge.high { background: var(--red-dim); color: var(--red); }
 .loading-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(8,8,16,0.95); z-index: 100; display: flex; align-items: center; justify-content: center; flex-direction: column; }
 .loading-card { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 32px; width: 420px; max-width: 90vw; }
 .loading-title { font-size: 18px; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
@@ -869,7 +874,6 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingSteps, setLoadingSteps] = useState([]);
   const [smartWallets, setSmartWallets] = useState(MOCK_WALLETS);
-  const [convictionSignals, setConvictionSignals] = useState(MOCK_SIGNALS);
   const [mockTrades, setMockTrades] = useState(MOCK_TRADES);
   const [selectedWallet, setSelectedWallet] = useState(null);
   const [activeTab, setActiveTab] = useState('leaderboard');
@@ -877,6 +881,34 @@ function App() {
   const [error, setError] = useState(null);
   const [isDemo, setIsDemo] = useState(true);
   const [copiedAddress, setCopiedAddress] = useState(null);
+  const [liveSignals, setLiveSignals] = useState(null);
+
+  const convictionSignals = useMemo(() => {
+    if (liveSignals) return liveSignals;
+    if (isDemo) return MOCK_SIGNALS;
+    const tokenHolders = {};
+    smartWallets.forEach(w => {
+      (w.positions || []).forEach(pos => {
+        if (!tokenHolders[pos.symbol]) tokenHolders[pos.symbol] = { holders: [], pos };
+        if (!tokenHolders[pos.symbol].holders.includes(w.address)) {
+          tokenHolders[pos.symbol].holders.push(w.address);
+        }
+      });
+    });
+    return Object.entries(tokenHolders)
+      .filter(([, v]) => v.holders.length >= 3)
+      .map(([symbol, v]) => ({
+        token: { symbol, name: v.pos.name, address: v.pos.tokenAddress },
+        conviction: v.holders.length >= 7 ? 'EXTREME' : v.holders.length >= 5 ? 'HIGH' : 'MODERATE',
+        walletCount: v.holders.length,
+        wallets: v.holders,
+        price: v.pos.price || 0,
+        priceChange24h: v.pos.priceChange24h || 0,
+        sparkline: v.pos.sparkline || generateSparkline(1, 1.1),
+        marketCap: 0,
+      }))
+      .sort((a, b) => b.walletCount - a.walletCount);
+  }, [smartWallets, isDemo, liveSignals]);
 
   const BASE_URL = 'https://public-api.birdeye.so';
 
@@ -1041,7 +1073,7 @@ function App() {
         });
       });
 
-      const liveSignals = Object.entries(tokenHolders)
+      const computedSignals = Object.entries(tokenHolders)
         .filter(([, v]) => v.holders.length >= 3)
         .map(([symbol, v]) => {
           const count = v.holders.length;
@@ -1061,7 +1093,7 @@ function App() {
 
       steps = updateStep(steps, 8);
       setSmartWallets(scoredWallets);
-      setConvictionSignals(liveSignals.length > 0 ? liveSignals : []);
+      setLiveSignals(computedSignals.length > 0 ? computedSignals : []);
       setLastRefresh(Date.now());
 
       await delay(500);
@@ -1070,7 +1102,7 @@ function App() {
       setError(err.message || 'Failed to load data');
       setIsDemo(true);
       setSmartWallets(MOCK_WALLETS);
-      setConvictionSignals(MOCK_SIGNALS);
+      setLiveSignals(null);
       setIsLoading(false);
     }
   }
